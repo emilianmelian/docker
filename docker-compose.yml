@@ -1,0 +1,66 @@
+version: '2'
+services:
+  keydata:
+    image: appcontainers/jenkins:debian
+    hostname: jenkins-keys
+    stdin_open: true
+    tty: true
+    volumes:
+    - /var/lib/jenkins_slave_key
+    environment:
+    - ROLE=slave
+    - SSH_PASS=jenkinspassword
+    command: sleep 1
+
+  data:
+    image: appcontainers/jenkins:debian
+    hostname: jenkins-data
+    stdin_open: true
+    tty: true
+    volumes_from:
+    - keydata
+    volumes:
+    - /var/lib/jenkins
+    environment:
+    - ROLE=slave
+    - SSH_PASS=jenkinspassword
+    command: sleep 1
+
+  slave:
+    image: pippajean/aut-master-slave:slave-j8
+    hostname: slave
+    stdin_open: true
+    tty: true
+    restart: always
+    privileged: true
+    environment:
+    - ROLE=slave
+    - SSH_PASS=jenkinspassword
+    volumes_from:
+    - keydata
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+
+  web:
+    image: pippajean/aut-master-slave:master
+    hostname: jenkins
+    stdin_open: true
+    tty: true
+    restart: always
+    ports:
+    - "81:8080"
+    environment:
+    - ROLE=master
+    - SSH_PASS=jenkinspassword
+    volumes_from:
+    - keydata
+    - data
+    volumes:
+    - /opt/automation/jenkins_save:/var/lib/jenkins
+    extra_hosts:
+    - "dev-hub.pippajean.com:172.18.0.1"
+    links:
+    - slave
+    command: /bin/bash
+
+
